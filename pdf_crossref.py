@@ -38,10 +38,10 @@ source_doc = st.file_uploader("Source Document", label_visibility="collapsed", t
 if st.button("Summarize and Cross Reference"):
     # Validate inputs
     if not openai_api_key.strip() or not source_doc:
-        st.error(f"Please provide the missing fields.")
+        st.error(f"Please provide the missing fields/keys.")
     else:
         try:
-            with st.spinner('Please wait...'):
+            with st.spinner('Thinking...'):
               # Save uploaded file temporarily to disk, load and split the file into pages
               with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                   tmp_file.write(source_doc.read())
@@ -63,9 +63,9 @@ if st.button("Summarize and Cross Reference"):
               )
 
               # Chain 1
-              chain1 = load_summarize_chain(llm=llm, chain_type="stuff", \
-                                            output_key="summary")
-              summary = chain1.run(input_documents=search, question=prompt1)
+              chain1 = load_summarize_chain(llm=llm, chain_type="stuff", output_key="summary") 
+              summary = chain1.run(input_documents=pages, question=prompt1) 
+              
               
               # prompt 2
               prompt2 = ChatPromptTemplate.from_template(
@@ -78,18 +78,20 @@ if st.button("Summarize and Cross Reference"):
               )
               
               # chain 2
-              chain2 = LLMChain(llm=llm, prompt=prompt2, output_key="analysis")
+              formatted_prompt2 = prompt2.format(summary=summary) 
+              chain2 = LLMChain(llm=llm, prompt=formatted_prompt2, output_key="analysis") 
+
 
               # master chain
               full_output = SequentialChain(
-                chains=[chain_one, chain_two, chain_three, chain_four],
-                input_documents=search,
-                question=prompt1
+                chains=[chain1, chain2],
+                input_documents=pages, 
+                question=prompt1,
                 input_variables=["prompt1"],
-                output_variables=["summary","analysis",
+                output_variables=["summary", "analysis"],
                 verbose=True
               )
 
-              st.success(analysis)
+              st.success(full_output) 
         except Exception as e:
             st.exception(f"An error occurred: {e}")
